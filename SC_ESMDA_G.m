@@ -32,8 +32,9 @@ simple_model_plotting(time,vp1D,vs1D,rho1D)
 %% Forward modeling
 [G,d] = lin_zoeppritz(vpt,vst,rhot,theta,nr);
 
-a = 4e-03;b=7e-03;
-%a = 6e-04;b=6e-04;
+%a = 8e-03;b=9e-03;
+a = 4e-03;b=7e-03; %snr ca 7
+%a = 6e-04;b=6e-04; %snr ca 70
 noise = a + (b-a).*rand(88,1); % må endre ift størrelse på modell
 d_noise = d + noise;
 
@@ -236,46 +237,64 @@ end
 %same covariance as the EnKF/ES-MDA:
 cov_d = eye(length(d))*max(max(R));
 
-%m_posterior = cov_m - cov_m*G'*inv(G*cov_m*G'+cov_d)*G*cov_m; %eq 3.38 tarantola
+%diagonalen gir variansen, bruk plottefunksjon for å fikse 
+
 mean_posterior = m_est+cov_m*G'*inv(G*cov_m*G'+cov_d)*(d_noise-G*m_est); % eq 3.37 tarantola
+%m_posterior = cov_m - cov_m*G'*inv(G*cov_m*G'+cov_d)*G*cov_m; %eq 3.38 tarantola
+m_posterior = inv(G'*inv(cov_d)*G+inv(cov_m));
+conf_area = diag(m_posterior);
+conf_area_p = conf_area(1:3:end);
+conf_area_s = conf_area(2:3:end);
+conf_area_d = conf_area(3:3:end);
 
 %% change from contrast to absolute velocities
 mean_posterior_vel = zeros(length(nr),3);
+conf_area_vel_max = zeros(length(nr),3);
+conf_area_vel_min = zeros(length(nr),3);
 
 for i = 1:length(nr)
     mean_posterior_vel(i,1:3) = [mean_posterior(3*(i-1)+1)*vpt(i)+vpt(i),mean_posterior(3*(i-1)+2)*vst(i)+vst(i),mean_posterior(3*i)*rhot(i)+rhot(i)];
 end
 
 %create vectors for velocities after inversion
-vp_mean = [vpt(1), mean_posterior_vel(:,1)'];
-vs_mean = [vst(1), mean_posterior_vel(:,2)'];
-rho_mean = [rhot(1), mean_posterior_vel(:,3)'];
+vp_mean = [vpt(1), mean_posterior_vel(:,1)'];vs_mean = [vst(1), mean_posterior_vel(:,2)'];rho_mean = [rhot(1), mean_posterior_vel(:,3)'];
 
-mean_posterior_vel = [vp_mean,vs_mean,rho_mean];
+for i = 1:length(nr)
+    conf_area_vel_max(i,1:3) = [conf_area_p(i)*vp_mean(i+1)+vp_mean(i+1),conf_area_s(i)*vs_mean(i+1)+vs_mean(i+1),conf_area_d(i)*rho_mean(i+1)+rho_mean(i+1)];
+    conf_area_vel_min(i,1:3) = [-conf_area_p(i)*vp_mean(i+1)+vp_mean(i+1),-conf_area_s(i)*vs_mean(i+1)+vs_mean(i+1),-conf_area_d(i)*rho_mean(i+1)+rho_mean(i+1)];
+end
 
+vp_min = [vpt(1),conf_area_vel_min(:,1)'];vs_min = [vst(1),conf_area_vel_min(:,2)'];rho_min = [rhot(1),conf_area_vel_min(:,3)'];
+vp_max = [vpt(1),conf_area_vel_max(:,1)'];vs_max= [vst(1),conf_area_vel_max(:,2)'];rho_max = [rhot(1),conf_area_vel_max(:,3)'];
+
+%make new length for plotting
 [vp1D_mean,vs1D_mean,rho1D_mean] = vel_den_vectors(time,nr,vp_mean,vs_mean,rho_mean);
+[vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
+[vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
 
 %% Confidence area
 
 %Using equation 2.32 Aster Inverse
-mean_Xp_vel_max = 1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
-mean_Xp_vel_min = -1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
-
-vp_max = mean_Xp_vel_max(1:9);
-vs_max = mean_Xp_vel_max(10:18);
-rho_max = mean_Xp_vel_max(19:27);
-
-vp_min = mean_Xp_vel_min(1:9);
-vs_min = mean_Xp_vel_min(10:18);
-rho_min = mean_Xp_vel_min(19:27);
-
-[vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
-[vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
+% mean_posterior_vel = [vp_mean,vs_mean,rho_mean];
+% 
+% mean_Xp_vel_max = 1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
+% mean_Xp_vel_min = -1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
+% 
+% vp_max = mean_Xp_vel_max(1:9);
+% vs_max = mean_Xp_vel_max(10:18);
+% rho_max = mean_Xp_vel_max(19:27);
+% 
+% vp_min = mean_Xp_vel_min(1:9);
+% vs_min = mean_Xp_vel_min(10:18);
+% rho_min = mean_Xp_vel_min(19:27);
+% 
+% [vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
+% [vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
 
 %% Plotting fill:
 
 figure(4)
-plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_max,vp1D_min,vs1D_max,vs1D_min,rho1D_max,rho1D_min)
+plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_max,vp1D_min,vs1D_max,vs1D_min,rho1D_max,rho1D_min,vp1D,vs1D,rho1D)
 
 %% Plotting mean:
 
