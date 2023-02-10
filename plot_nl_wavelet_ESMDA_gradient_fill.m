@@ -1,4 +1,4 @@
-function plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vp,vs,rho,time,nr,I,distr,vp1D_max,vp1D_min,vs1D_max,vs1D_min,rho1D_max,rho1D_min)
+function plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vp,vs,rho,time,nr,I,distr,vp1D_max,vp1D_min,vs1D_max,vs1D_min,rho1D_max,rho1D_min,vp_true,vs_true,rho_true)
 
 %Input
 %X    - prior state vector
@@ -138,6 +138,7 @@ inBetween2=[pvp95min,fliplr(pvp95max)];
 h1=fill(inBetween1,x2,'b'); set(h1,'facealpha',.1)
 h2=fill(inBetween2,x2,'b'); set(h2,'facealpha',.55)
 p1 = patch([vp1D_max fliplr(vp1D_min)], [time fliplr(time)],'r'); set(p1, 'facealpha',.55)
+stairs(vp_true,time,'k','Linewidth',3.5)
 grid on
 hold off
 
@@ -159,6 +160,7 @@ inBetween2=[pvs95min,fliplr(pvs95max)];
 h3=fill(inBetween1,x2,'b'); set(h3,'facealpha',.1)
 h4=fill(inBetween2,x2,'b'); set(h4,'facealpha',.5)
 p2 = patch([vs1D_max fliplr(vs1D_min)], [time fliplr(time)], 'r'); set(p2, 'facealpha',.5)
+stairs(vs_true,time,'k','Linewidth',3.5)
 grid on
 hold off
 
@@ -181,8 +183,9 @@ inBetween2=[pr95min,fliplr(pr95max)];
 h5=fill(inBetween1,x2,'b'); set(h5,'facealpha',.1)
 h6=fill(inBetween2,x2,'b'); set(h6,'facealpha',.55) %post conf
 p3 = patch([rho1D_max fliplr(rho1D_min)], [time fliplr(time)],'r'); set(p3, 'facealpha',.55)
+stairs(rho_true,time,'k','Linewidth',3.5)
 grid on
-hb=legend('95% prior confidence area ES-MDA','95% posterior confidence area ES-MDA','95% prior confidence area gradient based')
+hb=legend('95% prior confidence area ES-MDA','95% posterior confidence area ES-MDA','95% prior confidence area gradient based','True model')
 hold off
 
 save hb
