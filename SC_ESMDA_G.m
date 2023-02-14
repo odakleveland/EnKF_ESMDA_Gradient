@@ -32,8 +32,9 @@ simple_model_plotting(time,vp1D,vs1D,rho1D)
 %% Forward modeling
 [G,d] = lin_zoeppritz(vpt,vst,rhot,theta,nr);
 
-%a = 8e-03;b=9e-03;
-a = 4e-03;b=7e-03; %snr ca 7
+%a = 8e-03;b=9e-03; %snr ca 5
+%a = 4e-03;b=7e-03; %snr ca 7
+a = 1e-03;b=4.5e-03; %snr ca 15
 %a = 6e-04;b=6e-04; %snr ca 70
 noise = a + (b-a).*rand(88,1); % må endre ift størrelse på modell
 d_noise = d + noise;
@@ -272,24 +273,24 @@ vp_max = [vpt(1),conf_area_vel_max(:,1)'];vs_max= [vst(1),conf_area_vel_max(:,2)
 [vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
 [vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
 
-%% Confidence area
+%% Confidence area (Aster
 
 %Using equation 2.32 Aster Inverse
-% mean_posterior_vel = [vp_mean,vs_mean,rho_mean];
-% 
-% mean_Xp_vel_max = 1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
-% mean_Xp_vel_min = -1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
-% 
-% vp_max = mean_Xp_vel_max(1:9);
-% vs_max = mean_Xp_vel_max(10:18);
-% rho_max = mean_Xp_vel_max(19:27);
-% 
-% vp_min = mean_Xp_vel_min(1:9);
-% vs_min = mean_Xp_vel_min(10:18);
-% rho_min = mean_Xp_vel_min(19:27);
-% 
-% [vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
-% [vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
+%mean_posterior_vel = [vp_mean,vs_mean,rho_mean];
+
+%mean_Xp_vel_max = 1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
+%mean_Xp_vel_min = -1.96*sqrt(mean_posterior_vel)+mean_posterior_vel;
+
+%vp_max = mean_Xp_vel_max(1:9);
+%vs_max = mean_Xp_vel_max(10:18);
+%rho_max = mean_Xp_vel_max(19:27);
+
+%vp_min = mean_Xp_vel_min(1:9);
+%vs_min = mean_Xp_vel_min(10:18);
+%rho_min = mean_Xp_vel_min(19:27);
+
+%[vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
+%[vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
 
 %% Plotting fill:
 
