@@ -32,10 +32,10 @@ simple_model_plotting(time,vp1D,vs1D,rho1D)
 %% Forward modeling
 [G,d] = lin_zoeppritz(vpt,vst,rhot,theta,nr);
 
-%a = 8e-03;b=9e-03; %snr ca 5
-%a = 4e-03;b=7e-03; %snr ca 7
+% a = 8e-03;b=9e-03; %snr ca 5
+% a = 4e-03;b=7e-03; %snr ca 7
 a = 1e-03;b=4.5e-03; %snr ca 15
-%a = 6e-04;b=6e-04; %snr ca 70
+% a = 6e-04;b=6e-04; %snr ca 70
 noise = a + (b-a).*rand(88,1); % må endre ift størrelse på modell
 d_noise = d + noise;
 
@@ -187,6 +187,14 @@ plot_wavelets(obs,obs1,time,theta)
 
 SNR=rms(obs1)./rms(obs1-obs)
 
+%Change R - fix this later
+diagRd=eye(1,length(vpt)-1);
+for kk=1:length(theta)
+    varR=rms(d((kk-1)*(length(vpt)-1)+1:kk*(length(vpt)-1)))./(SNR_d);     %STD
+    diagRd((kk-1)*(length(vpt)-1)+1:kk*(length(vpt)-1))=varR.^2;
+end
+Rd=diag(diagRd);          %Error covariance matrix
+
 %% Inversion part
 tic
 
@@ -236,7 +244,7 @@ end
 % end
 
 %same covariance as the EnKF/ES-MDA:
-cov_d = eye(length(d))*max(max(R));
+cov_d = eye(length(d))*max(max(Rd));
 
 %diagonalen gir variansen, bruk plottefunksjon for å fikse 
 
@@ -297,17 +305,17 @@ vp_max = [vpt(1),conf_area_vel_max(:,1)'];vs_max= [vst(1),conf_area_vel_max(:,2)
 figure(4)
 plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_max,vp1D_min,vs1D_max,vs1D_min,rho1D_max,rho1D_min,vp1D,vs1D,rho1D)
 
-%% Plotting mean:
-
-figure(5)
-plot_nl_wavelet_ESMDA_gradient(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_mean,vs1D_mean,rho1D_mean)
-
-%% Plot gradient based method:
-
-figure(6)
-plot_gradient(vp1D,vs1D,rho1D,vp1D_min,vp1D_max,vs1D_min,vs1D_max,rho1D_min,rho1D_max,time,vp1D_mean,vs1D_mean,rho1D_mean,nr)
-
-%% Plot ES-MDA
-
-figure(7)
-plot_nl_wavelet_ESMDA(X,Xp,vpt,vst,rhot,time,nr,I,1);
+% %% Plotting mean:
+% 
+% figure(5)
+% plot_nl_wavelet_ESMDA_gradient(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_mean,vs1D_mean,rho1D_mean)
+% 
+% %% Plot gradient based method:
+% 
+% figure(6)
+% plot_gradient(vp1D,vs1D,rho1D,vp1D_min,vp1D_max,vs1D_min,vs1D_max,rho1D_min,rho1D_max,time,vp1D_mean,vs1D_mean,rho1D_mean,nr)
+% 
+% %% Plot ES-MDA
+% 
+% figure(7)
+% plot_nl_wavelet_ESMDA(X,Xp,vpt,vst,rhot,time,nr,I,1);
