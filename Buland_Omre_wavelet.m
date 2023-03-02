@@ -1,4 +1,4 @@
-clear all;close all;clc
+clear;close all;clc
 
 %% Velocity model
 
@@ -33,54 +33,92 @@ w = ricker_wavelet_zero_phased(dt,t,centr_frq);
 
 %% Deterministic inversion to find m_est
 
-[vp_inv,vs_inv,rho_inv,m_inv,m_est] = det_inversion_damped(G,d,nr,vpt,vst,rhot,1);
+%[vp_inv,vs_inv,rho_inv,m_inv,m_est] = det_inversion_damped(G,d,nr,vpt,vst,rhot,1);
+
+%%
+
+[G,d,a_alpha,a_beta,a_rho] = lin_zoeppritz_new(vp1D,vs1D,rho1D,theta,nr,time);
+
+[vp_inv_new,vs_inv,rho_inv,m_inv,m_est] = det_inversion_damped(G,d,nr,vpt,vst,rhot,1);
 
 
-%% Buland + Omre eq. 22 (forward modeling)
+%% Buland + Omre eq. 22 (inverse modeling)
+% want to find m from d = S*Am
+
+%%
+
+delta_alpha = diff(vpt);delta_beta = diff(vst);delta_rho = diff(rhot);
+
+for i = 1:length(nr)
+    for j = 1:length(theta)
+        a_alpha(i,j) = 0.5*(1+(tand(theta(j)).^2));
+        a_beta(i,j) = -4*(vst(i).^2)/(vpt(i).^2)*sind(theta(j)).^2;
+        a_rho(i,j) = 0.5*(1-4*(vst(i).^2)/(vpt(i).^2)*sind(theta(j)).^2);
+    end  
+end
 
 
-S = w; %kan bli matrise (en wavelet per vinkel)
-c = G*m_est; %skal avhenge av vinkel og tid
+%%
 
-%test for 1 laggrense først
-%endre på laggrensen 
-% 
-% d_obs=zeros(1,((length(time)-1)*length(theta)));
-% for ii = 1:length(nr)
-%     d_obs((kk-1)*length(time)+1:kk*length(time))=conv(Rpp(:,ii),S,'same');
-% end
+for i = 1:length(time)
+    for j = 1:length(theta)
+        a_alpha(i,j) = 0.5*(1+(tand(theta(j)).^2)); %må få denne til å avhenge av tid
+    end  
+end
 
-% d_obs = reflectivity_convolution(time,theta,Rpp,w);
+%%
+m_est_alpha = [m_est(1:11,1:11)];
 
-% figure('Renderer', 'painters', 'Position', [50 40 800 500])
-% subplot(1,3,1)
-% normm=norm(d_obs(1:length(time)));
-% hold on,title('With noise'),grid on
-% for kk=1:length(theta)
-%     plot(d_obs((kk-1)*length(time)+1:kk*length(time))/normm*7*4+((kk-1)*4),time(1:end),'k','Linewidth',2)
-% end
-% set(gca,'Ydir','reverse'),set(gca,'FontSize',15),set(gca,'Linewidth',2)
-% xlabel('Incidence angle'),ylabel('Time (s)')
-% hold off
-% axis([-10,50,0.1,max(time)])
+%c = a_alpha.*m_est_alpha(1:11); %skal bli 140x11
+c = a_alpha.*m_est_alpha;
 
-%% Buland Omre eq. 22 (forward modeling, p-waves)
+%%
 
-m_est_alpha = [m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8);m_est(1:8)];
-
-c = a_alpha*m_est_alpha';
-
-d_obs = zeros(88,length(theta));
+d_obs = zeros(length(time),length(theta));
 for kk = 1:length(theta)
-    con = conv(c(:,kk),S,'same');
+    con = conv(c(:,kk),w,'same');
     d_obs(:,kk) = con;
 end
 
-%plot time(51:end-2) (første del av time er for første lag)
 %% plot wavelet
+normm=norm(d_obs(1:length(time)));
 figure('Renderer', 'painters', 'Position', [50 40 800 500])
 for kk = 1:length(theta)
-    plot(d_obs(:,kk),time(51:end-2))
+    plot(d_obs(:,kk)/normm*7*4+((kk-1)*4),time)
     hold on
 end
 hold off
+
+%% test
+
+delta_alpha = diff(vp1D);delta_beta = diff(vs1D);delta_rho = diff(rho1D);
+delta_alpha(end+1)=0;delta_beta(end+1)=0;delta_rho(end+1)=0;
+
+G = zeros(length(time),3*length(nr));
+d = zeros(length(time),length(theta));
+
+for i = 1:length(time)
+    for j = 1:length(theta)
+        a_alpha(i,j) = 0.5*(1+(tand(theta(j)).^2));
+        a_beta(i,j) = -4*(vs1D(i).^2)/(vp1D(i).^2)*sind(theta(j)).^2;
+        a_rho(i,j) = 0.5*(1-4*(vs1D(i).^2)/(vp1D(i).^2)*sind(theta(j)).^2);
+        d(i,j) = a_alpha(i,j)*(delta_alpha(i)/vp1D(i))+a_beta(i,j)*(delta_beta(i)/vs1D(i))+a_rho(i,j)*(delta_rho(i)/rho1D(i));
+    end  
+end
+
+G = [a_alpha,a_beta,a_rho];
+
+%d = [d;d;d];
+
+size(d)
+size(G)
+
+num_alpha=1;
+I = eye(size(G'*G));
+
+n_alpha = length(I);
+alpha = logspace(-2,0.01,n_alpha);
+
+m_est = inv(G'*G+alpha(num_alpha).^2*I)*(G'*d);
+
+size(a_alpha)
