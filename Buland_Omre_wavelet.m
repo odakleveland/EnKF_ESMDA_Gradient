@@ -70,7 +70,7 @@ end
 m_est_alpha = [m_est(1:11,1:11)];
 
 %c = a_alpha.*m_est_alpha(1:11); %skal bli 140x11
-c = a_alpha.*m_est_alpha;
+c = a_alpha*m_est_alpha;
 
 %%
 
