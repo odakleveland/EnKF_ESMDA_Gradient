@@ -55,7 +55,7 @@ for hh=1:Na
                 
             end
             %Convolution with the wavelet, check the wavelet
-            uz_l1=conv(Rpp1(:,ii),w,'same');  %check conv function            
+            uz_l1=conv(Rpp1(:,ii),w,'same');       
             uz=uz_l1(1:nt); %might not need this
             
             %Forward modeled data, change for ray born

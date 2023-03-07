@@ -18,6 +18,7 @@ rho22 = rho2 + rho1;
 
 alpha1=(vp1+vp22)/2;
 beta1=(vs1+vs22)/2;
+rho1_new = (rho1+rho22)/2;
 
 %Linear zoeppritz:
 a_alpha = 0.5*(1+(tand(theta).^2));
@@ -28,5 +29,5 @@ delta_alpha = vp22-vp1;
 delta_beta = vs22-vs1;
 delta_rho = rho22-rho1;
 
-Rpp = a_alpha*(delta_alpha/alpha1) + a_beta*(delta_beta/beta1) + a_rho*(delta_rho/rho1);
+Rpp = a_alpha*(delta_alpha/alpha1) + a_beta*(delta_beta/beta1) + a_rho*(delta_rho/rho1_new);
 end

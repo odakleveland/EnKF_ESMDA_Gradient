@@ -1,4 +1,4 @@
-function [G,d] = lin_zoeppritz(vpt,vst,rhot,theta,nr)
+function [G,d,a_alpha,a_beta,a_rho] = lin_zoeppritz(vpt,vst,rhot,theta,nr)
 
 delta_alpha = diff(vpt);delta_beta = diff(vst);delta_rho = diff(rhot);
 
@@ -19,7 +19,7 @@ a_rho = reshape(a_rho,[],1);
 d = reshape(d,[],1);
 
 for i = 1:length(nr)
-    G(((i-1)*11)+1:i*11,(3*(i-1))+1:3*i) = [a_alpha((i-1)*11+1:i*11),a_beta((i-1)*11+1:i*11),a_rho((i-1)*11+1:i*11)];
+    G(((i-1)*length(theta))+1:i*length(theta),(3*(i-1))+1:3*i) = [a_alpha((i-1)*11+1:i*length(theta)),a_beta((i-1)*length(theta)+1:i*length(theta)),a_rho((i-1)*length(theta)+1:i*length(theta))];
 end
 
 end

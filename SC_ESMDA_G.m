@@ -17,6 +17,7 @@ nr=[30,45,65,80,85,95,110,115]+20; %Interface in time step
 vpt=[2300,2500,2150,2250,2400,2500,2300,2250,2400];
 vst=[1170,1270,1070,1120,1170,1270,1170,1120,1170];
 rhot=[2146,2192,2135,2110,2169,2192,2146,2110,2169];
+m = [vpt',vst',rhot'];
 
 %Background velocity and density
 bvpt=vpt(1:end-1);bvst=vst(1:end-1);brhot=rhot(1:end-1);
@@ -42,7 +43,7 @@ d_noise = d + noise;
 
 SNR_d = rms(d)./rms(d-d_noise)
 
-d_noise = d;
+%d_noise = d;
 
 %% L-curve
 I = eye(size(G'*G));
@@ -76,72 +77,19 @@ centr_frq = 25;
 
 w = ricker_wavelet_zero_phased(dt,t,centr_frq);
 
-%% Create wavelet 
-d_new = d';
-d_conv = zeros(1,length(time)); %endret så det er mulig å plotte mot tid, riktig?
-for kk = 1:length(d)
-    d_conv(kk)=conv(d_new(:,kk),w,'same');
-end
-
-A = [a_alpha,a_beta,a_rho];
-%A*m_est; %passer ikke
-
-%%
-% figure('Renderer', 'painters', 'Position', [50 40 800 500])
-% hold on,title('No noise'),grid on
-% for kk = 1:length(d)
-%     %plot()
-% end
-
 %% Output
 
 [vp1D_inv,vs1D_inv,rho1D_inv] = vel_den_vectors(time,nr,vp_inv,vs_inv,rho_inv);
 
-% figure('Name','Inverted model')
-% subplot(1,3,1)
-% stairs(vp1D_inv,time,'r','Linewidth',1.5),title('P-wave'),grid on
-% hold on
-% stairs(vp1D,time,'k','Linewidth',1.5),title('P-wave'),grid on
-% hold off
-% xlabel('Velocity (m/s)'),ylabel('Time (s)')
-% set(gca,'Ydir','reverse'),set(gca,'FontSize',10),set(gca,'Linewidth',2)
-% axis([1000,4200,0,max(time)])
-% subplot(1,3,2)
-% stairs(vs1D_inv,time,'r','Linewidth',1.5),title('S-wave'),grid on
-% hold on
-% stairs(vs1D,time,'k','Linewidth',1.5),title('S-wave'),grid on
-% hold off
-% xlabel('Velocity (m/s)'),ylabel('Time (s)')
-% set(gca,'Ydir','reverse'),set(gca,'FontSize',10),set(gca,'Linewidth',2)
-% axis([500,2600,0,max(time)])
-% subplot(1,3,3)
-% stairs(rho1D_inv,time,'r','Linewidth',1.5),title('Density'),grid on
-% hold on
-% stairs(rho1D,time,'k','Linewidth',1.5),title('Density'),grid on
-% legend('inverted','original ')
-% hold off
-% xlabel('Density (kg/m^3)'),ylabel('Time (s)')
-% set(gca,'Ydir','reverse'),set(gca,'FontSize',10),set(gca,'Linewidth',2)
-% axis([1800,2500,0,max(time)])
+simple_model_inverse_plotting(vp1D_inv,vp1D,vs1D_inv,vs1D,rho1D_inv,rho1D,time)
 
 %% Covariance matrix
 I=3;                                %Parameters per layer
 
 %Reflection coefficients                         
-Rpp=zeros((length(vp1D)),length(theta));     
-for nn=1:length(vp1D)-1
-    for kk=1:length(theta)
-        
-        a=vp1D(nn);aa1=vp1D(nn+1)-vp1D(nn);
-        b=vs1D(nn);bb1=vs1D(nn+1)-vs1D(nn);
-        rho=rho1D(nn);rhoo1=rho1D(nn+1)-rho1D(nn);
-        
-        %Non-linear zoeppritz to model the observed reflection coeff. Noise free
-        Rpp(nn,kk)=linear_zoeppritz_contrast(theta(kk),a,aa1,b,bb1,rho,rhoo1); 
-        %Rpp(nn,kk)=zoeppritz(theta(kk),a,aa1,b,bb1,rho,rhoo1); 
-    end
-end
+Rpp = reflection_coefficients(vp1D,vs1D,rho1D,theta);
 
+%Convolution
 obs1 = reflectivity_convolution(time,theta,Rpp,w);
 
 %Priori model, assume gaussian
@@ -152,11 +100,6 @@ for ii=1:length(nr)
     mup(ii)=2350;mus(ii)=1270;mur(ii)=2150;
 end
 
-%Linear prior mean
-% mup=linspace(vpt(1),max(vpt),length(nr));
-% mus=linspace(vst(1),max(vst),length(nr));
-% mur=linspace(rhot(1),max(rhot),length(nr));
-
 %Gather the prior mean in one vector
 for ii=1:length(nr)
     mu(1+I*(ii-1))=mup(ii);mu(2+I*(ii-1))=mus(ii);mu(3+I*(ii-1))=mur(ii);
@@ -164,23 +107,15 @@ end
 
 Num_parameters=length(mu);      %Number of parameters in total
 Pvari=500;Svari=300;Rvari=300;  %variance
-Covariance_matrix=eye(Num_parameters,Num_parameters); 
-for ii=1:length(nr)
-    Covariance_matrix(1+I*(ii-1),1+I*(ii-1))=Pvari;
-    Covariance_matrix(2+I*(ii-1),2+I*(ii-1))=Svari;
-    Covariance_matrix(3+I*(ii-1),3+I*(ii-1))=Rvari;
-    
-    Covariance_matrix(2+I*(ii-1),1+I*(ii-1))=0; Covariance_matrix(1+I*(ii-1),2+I*(ii-1))=0;
-    Covariance_matrix(3+I*(ii-1),1+I*(ii-1))=0;  Covariance_matrix(1+I*(ii-1),3+I*(ii-1))=0; 
-    Covariance_matrix(3+I*(ii-1),2+I*(ii-1))=0;  Covariance_matrix(2+I*(ii-1),3+I*(ii-1))=0; 
-end
+
+cov_m = covariance_matrix_m(I,Num_parameters,nr,Pvari,Svari,Rvari);
+
 Num_ensembles=1000;
-[X]=ensemble_correlation(mu,Covariance_matrix,Num_parameters,Num_ensembles,1);   %Function to sample ensembles
+[X]=ensemble_correlation(mu,cov_m,Num_parameters,Num_ensembles,1);   %Function to sample ensembles
 
 %Add noise to noise free data
 rng(41)                                         %Seed number, not needed
 S_N_r=linspace(SNR_d,SNR_d,length(time));             %SNR, endret fra 15 til 100
-%obs=zeros(1,length(time)*length(theta));
 timepost=zeros(1,length(time)*length(theta));
 for kk=1:length(theta)
     varR=rms(obs1((kk-1)*length(time)+1:kk*length(time)))./(S_N_r);     %STD
@@ -225,21 +160,8 @@ Xp=ESMDA_wavelet_linear(X,w,a,obs,R,Num_ensembles,Num_parameters,Na,bvpt,bvst,br
 time_toc=toc
 %% Gradient-based method
 
-I = 3; %number of parameters
-
-Num_parameters=length(nr)*I;      %Number of parameters in total
-cov_m=eye(Num_parameters); %covariance model
-for ii=1:length(nr)
-    cov_m(1+I*(ii-1),1+I*(ii-1))=Pvari;
-    cov_m(2+I*(ii-1),2+I*(ii-1))=Svari;
-    cov_m(3+I*(ii-1),3+I*(ii-1))=Rvari;
-    
-    cov_m(2+I*(ii-1),1+I*(ii-1))=0; cov_m(1+I*(ii-1),2+I*(ii-1))=0;
-    cov_m(3+I*(ii-1),1+I*(ii-1))=0;  cov_m(1+I*(ii-1),3+I*(ii-1))=0; 
-    cov_m(3+I*(ii-1),2+I*(ii-1))=0;  cov_m(2+I*(ii-1),3+I*(ii-1))=0; 
-end
-
 cov_d = eye(length(d))*max(max(Rd)); %covariance data
+%cov_m = covariance_matrix_m(I,Num_parameters,nr,Pvari,Svari,Rvari)
 
 mean_posterior = m_est+cov_m*G'*inv(G*cov_m*G'+cov_d)*(d_noise-G*m_est); % eq 3.37 tarantola
 m_posterior = inv(G'*inv(cov_d)*G+inv(cov_m));
@@ -267,6 +189,84 @@ vp_max = [vpt(1),conf_area_vel_max(:,1)'];vs_max= [vst(1),conf_area_vel_max(:,2)
 [vp1D_min,vs1D_min,rho1D_min] = vel_den_vectors(time,nr,vp_min,vs_min,rho_min);
 [vp1D_max,vs1D_max,rho1D_max] = vel_den_vectors(time,nr,vp_max,vs_max,rho_max);
 
+%% Buland and Omre method (only P-waves)
+
+%changing the size om m_est:
+m_est_alpha =zeros(9,1);m_est_beta =zeros(9,1);m_est_rho =zeros(9,1);
+for i = 1:length(nr)
+    m_est_alpha(i+1) = m_est(3*(i-1)+1);
+    m_est_beta(i+1) = m_est(3*(i-1)+2);
+    m_est_rho(i+1) = m_est(3*i);
+end
+
+nnr=[0,nr,length(time)];
+for gg=1:length(nnr)-1
+    m_est_1D_alpha(1+nnr(gg):nnr(gg+1))=m_est_alpha(gg);
+    m_est_1D_beta(1+nnr(gg):nnr(gg+1))=m_est_beta(gg);
+    m_est_1D_rho(1+nnr(gg):nnr(gg+1))=m_est_rho(gg);
+end
+
+m_est_1D = [m_est_1D_alpha',m_est_1D_beta',m_est_1D_rho'];
+
+% Finding G and d that depends on time
+
+[G_new,d_new,a_alpha,a_beta,a_rho] = lin_zoeppritz_new(vp1D,vs1D,rho1D,theta,nr,time);
+
+%Finding new m_inv
+
+m_inv_alpha_1D=zeros(140,1);
+
+m_inv_alpha1D = zeros(length(time),1);
+for i = 2:length(nr)
+    m_inv_alpha_1D(1:nr(1)) = vpt(1);
+    m_inv_alpha_1D(nr(i-1)+1:nr(i)) = m_est_1D_alpha(nr(i))*vpt(i-1)+vpt(i-1);
+    m_inv_alpha_1D(nr(end):end) = m_est_1D_alpha(nr(end)+1)*vpt(end-1)+vpt(end-1);
+end
+
+%Convolution
+obs_d_gradient = reflectivity_convolution(time,theta,d_new,w);
+
+% Adding noise
+for kk=1:length(theta)
+    varR=rms(obs_d_gradient((kk-1)*length(time)+1:kk*length(time)))./(S_N_r);     %STD
+    %Observed data with noise
+    obs_d_gradient_noise((kk-1)*length(time)+1:kk*length(time))=...
+        obs_d_gradient((kk-1)*length(time)+1:kk*length(time))+randn(1,length(time)).*varR;
+end
+
+% Plotting waveforms
+plot_wavelets(obs_d_gradient_noise,obs_d_gradient,time,theta)
+SNR_gradient=rms(obs_d_gradient)./rms(obs_d_gradient-obs_d_gradient_noise)
+
+%% Gradient based method, only p-waves
+
+I_new = 1; %number of parameters
+Pvari=500;Svari=300;Rvari=300;
+Num_parameters=length(theta)*I_new;      %Number of parameters in total *I
+cov_m_new=eye(Num_parameters)*Pvari; %covariance model
+cov_d_new = eye(length(d_new))*max(max(Rd));
+
+G_new_alpha=G_new(:,1:11);
+
+obs_d_gradient_matrix = reshape(obs_d_gradient_noise,140,11);
+
+partt1 = cov_m_new*G_new_alpha';
+partt2 = inv(G_new_alpha*cov_m_new*G_new_alpha'+cov_d_new);
+partt3  = obs_d_gradient_matrix-G_new_alpha.*m_est_1D(:,1);
+
+mean_posterior = m_est_1D_alpha+partt1*partt2.*partt3';
+mean_posterior=mean_posterior';
+
+%change from contrast to velocities
+
+mean_posterior_vel_test = zeros(length(time),1);
+    
+for i = 2:length(nr)
+    mean_posterior_vel_test(1:nr(1)) = vpt(1);
+    mean_posterior_vel_test(nr(i-1)+1:nr(i)) = mean_posterior(nr(i))*vpt(i-1)+vpt(i-1);
+    mean_posterior_vel_test(nr(end)+1:end) = mean_posterior(nr(end)+1)*vpt(end-1)+vpt(end-1);
+end
+
 %% Plotting fill:
 
 figure(4)
@@ -277,12 +277,17 @@ plot_nl_wavelet_ESMDA_gradient_fill(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_max,vp1D_
 figure(5)
 plot_nl_wavelet_ESMDA_gradient(X,Xp,vpt,vst,rhot,time,nr,I,1,vp1D_mean,vs1D_mean,rho1D_mean)
 
-% %% Plot gradient based method:
-% 
-% figure(6)
-% plot_gradient(vp1D,vs1D,rho1D,vp1D_min,vp1D_max,vs1D_min,vs1D_max,rho1D_min,rho1D_max,time,vp1D_mean,vs1D_mean,rho1D_mean,nr)
-% 
-% %% Plot ES-MDA
-% 
-% figure(7)
-% plot_nl_wavelet_ESMDA(X,Xp,vpt,vst,rhot,time,nr,I,1);
+%% Plot gradient based method:
+
+figure(6)
+plot_gradient(vp1D,vs1D,rho1D,vp1D_min,vp1D_max,vs1D_min,vs1D_max,rho1D_min,rho1D_max,time,mean_posterior_vel_test,vs1D_mean,rho1D_mean,nr)
+
+%% Plot ES-MDA
+
+figure(7)
+plot_nl_wavelet_ESMDA(X,Xp,vpt,vst,rhot,time,nr,I,1);
+
+%% Test
+
+
+[G_new,d_new,a_alpha,a_beta,a_rho] = lin_zoeppritz_new(vp1D,vs1D,rho1D,theta,nr,time);

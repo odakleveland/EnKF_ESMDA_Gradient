@@ -39,7 +39,7 @@ Epr(1)=rho(1);      Varpr(1)=0;    Evr(1)=E(3);      Varvr(1)=0;
 pmin95r(1)=rho(1);  pmax95r(1)=rho(1);  min95r(1)=rho(1);   max95r(1)=rho(1);
 
 %Expectence, variance and 95% confidence interval in all layers below layer one
-conf = 1; %conf = 1.960;
+conf = 1.960; %conf = 1.960;, conf = 1;
 for ii=1:length(vp)-1
     Epvp(ii+1)=Ep(1+I*(ii-1));    Varpp(ii+1)=Varp(1+I*(ii-1));     %P-vel
     Epvs(ii+1)=Ep(2+I*(ii-1));    Varps(ii+1)=Varp(2+I*(ii-1));     %S-vel

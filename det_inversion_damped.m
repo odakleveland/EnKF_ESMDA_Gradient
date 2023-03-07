@@ -19,6 +19,6 @@ vp_inv = [2300, m_inv(:,1)'];
 vs_inv = [1170, m_inv(:,2)'];
 rho_inv = [2146, m_inv(:,3)'];
 
-m_inv = [vp_inv,vs_inv,rho_inv];
+m_inv = [vp_inv',vs_inv',rho_inv']
 
 end

@@ -39,7 +39,7 @@ Epr(1)=rho(1);      Varpr(1)=0;    Evr(1)=E(3);      Varvr(1)=0;
 pmin95r(1)=rho(1);  pmax95r(1)=rho(1);  min95r(1)=rho(1);   max95r(1)=rho(1);
 
 %Expectence, variance and 95% confidence interval in all layers below layer one
-conf = 1; %conf = 1.960;
+conf = 1.960; %conf = 1.960;
 for ii=1:length(vp)-1
     Epvp(ii+1)=Ep(1+I*(ii-1));    Varpp(ii+1)=Varp(1+I*(ii-1));     %P-vel
     Epvs(ii+1)=Ep(2+I*(ii-1));    Varps(ii+1)=Varp(2+I*(ii-1));     %S-vel
@@ -135,7 +135,7 @@ set(gca,'Ydir','reverse')
 x2=[zz,fliplr(zz)];
 stairs(vpE,zz,'g','Linewidth',3.5)
 stairs(vpEp,zz,'b','Linewidth',3.5)
-stairs(vp1D_mean,time,'r','Linewidth',3.5),grid on
+stairs(vp1D_mean(2:end),zz,'r','Linewidth',3.5),grid on
 stairs(vpp,zz,'k','Linewidth',3.5)
 %legend('95% pr. conf.','95% post. conf.','Prior mean','Post. mean','True model')
 hold off
@@ -155,7 +155,7 @@ set(gca,'Ydir','reverse')
 x2=[zz,fliplr(zz)];
 stairs(vsE,zz,'g','Linewidth',3.5)
 stairs(vsEp,zz,'b','Linewidth',3.5)
-stairs(vs1D_mean,time,'r','Linewidth',3.5),grid on
+stairs(vs1D_mean(2:end),zz,'r','Linewidth',3.5),grid on
 stairs(vsp,zz,'k','Linewidth',3.5)
 %legend('95% pre. prediction','95% post. prediction','Prior','Posterior','True model')
 hold off
@@ -176,7 +176,7 @@ set(gca,'Ydir','reverse')
 x2=[zz,fliplr(zz)];
 stairs(rE,zz,'g','Linewidth',3.5)
 stairs(rEp,zz,'b','Linewidth',3.5) %post mean
-stairs(rho1D_mean,time,'r','Linewidth',3.5),grid on
+stairs(rho1D_mean(2:end),zz,'r','Linewidth',3.5),grid on
 stairs(rp,zz,'k','Linewidth',3.5) %true model
 hb=legend('Prior mean','Posterior mean, ES-MDA','Posterior mean, gradient based','True model')
 hold off
