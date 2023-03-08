@@ -255,7 +255,8 @@ partt2 = inv(G_new_alpha*cov_m_new*G_new_alpha'+cov_d_new);
 partt3  = obs_d_gradient_matrix-G_new_alpha.*m_est_1D(:,1);
 
 mean_posterior = m_est_1D_alpha+partt1*partt2.*partt3';
-mean_posterior=mean_posterior';
+mean_posterior=mean_posterior(1,:)';
+mean_posterior(1:nr(1))=0;
 
 %change from contrast to velocities
 
