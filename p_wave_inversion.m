@@ -23,11 +23,26 @@ centr_frq = 25;
 
 w = ricker_wavelet_zero_phased(dt,t,centr_frq);
 
+%% Linear zoeppritz, not time dependent
+
+delta_alpha = diff(vpt);
+
+for i = 1:length(nr)
+    for j = 1:length(theta)
+        a_alpha(j,i) = 0.5*(1+(tand(theta(j)).^2));
+    end  
+end
+a_alpha = reshape(a_alpha,[],1);
+
+G = zeros(length(theta)*length(nr),length(nr));
+
+for i = 1:length(nr)
+    G(((i-1)*length(theta))+1:i*length(theta),((i-1))+1:i) = [a_alpha((i-1)*11+1:i*length(theta))];
+end
+
 %% Linear zoeppritz, time dependent
 
 delta_alpha = diff(vp1D);delta_alpha(end+1)=0;
-
-G = zeros(length(time),length(nr));
 
 for i = 1:length(time)
     for  j = 1:length(theta)
@@ -36,34 +51,11 @@ for i = 1:length(time)
     end
 end
 
-G = a_alpha(1:11,1);
-
-%% Deterministic inversion
-
-I = eye(size(G'*G));
-
-n_alpha = length(I);
-alpha = logspace(-2,0.01,n_alpha);
-
-num_alpha=1;
-
-m_est = inv(G'*G+alpha(num_alpha).^2*I)*G'*d;
-
-%% Sjekk at m_est stemmer med hastigheter
-
-m_est_test = nonzeros(m_est);
-
-m_inv = zeros(length(nr),1);
-
-for i = 1:length(nr)
-    m_inv(i) = m_est_test(i)*vpt(i)+vpt(i);
-end
-
 %% Convolution
 
 obs_gradient = reflectivity_convolution(time,theta,d',w);
 
-%% Adding noise
+%% Adding noise to convolved data
 
 S_N_r=linspace(7,7,length(time));             %SNR, endret fra 15 til 100
 timepost=zeros(1,length(time)*length(theta));
@@ -84,49 +76,122 @@ end
 R=diag(diagR);
 
 %% Plotting waveforms
+
 plot_wavelets(obs_gradient_noise,obs_gradient,time,theta)
 
+%% Extract reflection coefficients from obs_gradient
+
+obs_gradient_matrix = reshape(obs_gradient_noise,140,11);
+
+d_obs = zeros(8,11);
+
+for i = 1:length(nr)
+    d_obs(i,:)=obs_gradient_matrix(nr(i),:);
+end
+
+d_obs = reshape(d_obs',88,1);
+
+
+%% Sjekker om det blir perfekt resultat for d
+
+d_obs_test = nonzeros(d);
+
+%% Covariance d
+
+diagRd=eye(1,length(vpt)-1);
+for kk=1:length(theta)
+    varR=rms(d_obs((kk-1)*(length(vpt)-1)+1:kk*(length(vpt)-1)))./(max(S_N_r));     %STD
+    diagRd((kk-1)*(length(vpt)-1)+1:kk*(length(vpt)-1))=varR.^2;
+end
+cov_d=diag(diagRd);          %Error covariance matrix
+
 %% Gradient based method
-%g-matrise trenger ikke avhenge av tid
-%se på buland omre eq 30+31, sammenlign med tarantola
 
 I = 1; %number of parameters
-Pvari=500;Svari=300;Rvari=300;
-Num_parameters=length(theta)*I;      %Number of parameters in total *I
-cov_m=eye(Num_parameters)*Pvari;
-cov_d = eye(length(1))*max(max(R));
+Pvari=500;
+Num_parameters=length(nr)*I;      %Number of parameters in total *I
+cov_m=eye(Num_parameters)*Pvari; %140x140
+%cov_d = eye(length(theta)*length(nr))*max(max(R)); %kan være en feil her, se hovedscript
+
+m_prior = zeros(1,length(nr))*2350;
 
 obs_gradient_matrix = reshape(obs_gradient,140,11);
 
-partt1 = cov_m*G;
-partt2 = inv(G'*cov_m*G+cov_d);
-partt3  = obs_gradient_matrix-(G*m_est)';
-%partt3 = zeros(140,1); %test for å se om partt1 og partt2 er riktig
+%Endre: bruk riktig verdi, ikke vpt!!!
+part1 = cov_m*G';
+part2 = inv(G*cov_m*G'+cov_d);
+part3  = d_obs-(G*m_prior');
 
-mean_posterior = m_est+partt1*partt2.*partt3';
-mean_posterior = mean_posterior';
-mean_posterior = mean_posterior(:,1);
+mean_posterior = m_prior'+part1*part2*part3;
+
+%% Gradient based method with convolution of G
+
+%does not work
+
+% G = a_alpha(:,1);
+% 
+% G_conv=conv(G,w,'same');
+% 
+% % part1 = cov_m*G_conv;
+% % part2 = inv(G_conv'*cov_m*G_conv+cov_d);
+% % part3  = obs_gradient_matrix-(G_conv*m_est)';
+% part1 = G_conv;
+% part2 = inv(G_conv'*G_conv);
+% part3  = obs_gradient_matrix-(G_conv*m_prior)';
+% 
+% test = m_prior+part1*part2*part3';
 
 %% Change from contrast to velocity
 
-m_post_inv = zeros(length(time),1);
+m_post_inv = zeros(length(nr),1);
 
-for i = 2:length(nr)
-    m_post_inv(1:nr(1)) = vpt(1);
-    m_post_inv(nr(i-1)+1:nr(i)) = mean_posterior(nr(i-1)+1)*vpt(i-1)+vpt(i);
-    m_post_inv(nr(end)+1:end) = mean_posterior(nr(end-1)+1)*vpt(end-1)+vpt(end); %sjekk denne
+for i = 1:length(nr)
+    m_post_inv(i) = mean_posterior(i)*vpt(i)+vpt(i);
 end
+
+m_post_inv = [vpt(1); m_post_inv];
 
 %% Confidence area
 
+%not working, but works in SC_ESMDA_G for p-wave, s-wave and density
+
 m_posterior = inv(G'*inv(cov_d)*G+inv(cov_m));
+conf_area = diag(m_posterior);
+
+conf_area_max= zeros(1,length(nr));conf_area_min= zeros(1,length(nr));
+
+for i = 1:length(nr)
+    conf_area_max(i) = conf_area(i)*m_post_inv(i+1)+m_post_inv(i+1);
+    conf_area_min(i) = -conf_area(i)*m_post_inv(i+1)+m_post_inv(i+1);
+end
+conf_area_max = [vpt(1);conf_area_max'];conf_area_min = [vpt(1);conf_area_min'];
+
+%% change length of vectors to length(time)
+
+nnr=[0,nr,length(time)];
+for gg=1:length(nnr)-1
+    vp1D_mean(1+nnr(gg):nnr(gg+1))=m_post_inv(gg);
+    vp1D_max(1+nnr(gg):nnr(gg+1))=conf_area_max(gg);
+    vp1D_min(1+nnr(gg):nnr(gg+1))=conf_area_min(gg);
+end
 
 %% Plot velocities
+%set axis values
+x_min_vp=min(vp1D_min)-200*1.96;x_max_vp=max(vp1D_max)+300*1.96;
+y_min=time(nr(1)+1);y_max=max(time);
 
-figure(2)
-stairs(m_post_inv,time)
-hold on
-stairs(vp1D,time)
-legend('inverted model','true model')
+figure(10)
+%subplot(1,3,1)
+hold all
+p1 = patch([vp1D_max fliplr(vp1D_min)], [time fliplr(time)],[0.2,0.2,0.2]); set(p1, 'facealpha',.5)
+%p1 = patch([vp1D_max fliplr(vp1D_min)], [time fliplr(time)],'r'); set(p1, 'facealpha',.5)
+stairs(vp1D_mean,time,'r','Linewidth',3.5)
+stairs(vp1D,time,'k','Linewidth',3.5),title('P-wave velocity'),grid on
+hold off
+xlabel('Velocity (m/s)'),ylabel('TWT (s)')
+set(gca,'Ydir','reverse'),set(gca,'FontSize',10),set(gca,'Linewidth',2)
+legend('95% posterior confidence area','Posterior mean','True model')
+axis([x_min_vp,x_max_vp,y_min,y_max]),set(gca,'FontSize',35)
+
 
 
